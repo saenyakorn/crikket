@@ -11,6 +11,7 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
+import { createServerLogger } from "@/lib/server-logger"
 import { client } from "@/utils/orpc"
 
 import { OrganizationMembersSection } from "../_components/org-members/organization-members-section"
@@ -18,6 +19,8 @@ import { OrganizationDangerZone } from "../_components/organization-danger-zone"
 import { OrganizationSettingsForm } from "../_components/organization-settings-form"
 import { getRequestErrorMessage } from "../_lib/get-request-error-message"
 import { parseMembersQuery } from "../_lib/members-query"
+
+const logger = createServerLogger("settings-organization-page")
 
 export const metadata: Metadata = {
   title: "Organization Settings",
@@ -53,10 +56,15 @@ export default async function OrganizationSettingsPage({
   const { organizations, session } = await getProtectedAuthData()
 
   if (!session) {
+    logger.warn("redirecting to /login (no session)", { target: "/login" })
     redirect("/login")
   }
 
   if (organizations.length === 0) {
+    logger.warn("redirecting to /onboarding (no organizations)", {
+      userId: session.user.id,
+      target: "/onboarding",
+    })
     redirect("/onboarding")
   }
 

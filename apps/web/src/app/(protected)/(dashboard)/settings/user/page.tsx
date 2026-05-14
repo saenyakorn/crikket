@@ -9,9 +9,12 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
+import { createServerLogger } from "@/lib/server-logger"
 
 import { UserSettingsNameForm } from "../_components/user-settings-name-form"
 import { UserSettingsPasswordForm } from "../_components/user-settings-password-form"
+
+const logger = createServerLogger("settings-user-page")
 
 export const metadata: Metadata = {
   title: "User Settings",
@@ -22,6 +25,7 @@ export default async function UserSettingsPage() {
   const { session } = await getProtectedAuthData()
 
   if (!session) {
+    logger.warn("redirecting to /login (no session)", { target: "/login" })
     redirect("/login")
   }
 

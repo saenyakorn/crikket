@@ -10,8 +10,12 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { createServerLogger, describeError } from "@/lib/server-logger"
+
 import { SuccessActions } from "./_components/success-actions"
 import { SuccessPageGuard } from "./_components/success-page-guard"
+
+const logger = createServerLogger("checkout-success-page")
 
 export const metadata: Metadata = {
   title: "Checkout Success",
@@ -40,20 +44,37 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   const resolvedSearchParams = await searchParams
   const checkoutId = readCheckoutId(resolvedSearchParams.checkout_id)
   const requestHeaders = await headers()
-  const { data: session } = await authClient.getSession({
+  const sessionResponse = await authClient.getSession({
     fetchOptions: {
       headers: requestHeaders,
     },
   })
 
+  if (sessionResponse.error) {
+    logger.error(
+      "getSession returned error",
+      describeError(sessionResponse.error)
+    )
+  }
+
+  const session = sessionResponse.data
+
   if (!session) {
     const callbackURL = checkoutId
       ? `/success?checkout_id=${encodeURIComponent(checkoutId)}`
       : "/success"
+    logger.warn("redirecting to /login (no session)", {
+      hasCheckoutId: Boolean(checkoutId),
+      callbackURL,
+    })
     redirect(`/login?callbackURL=${encodeURIComponent(callbackURL)}`)
   }
 
   if (!checkoutId) {
+    logger.info("redirecting to /settings/organization (missing checkout_id)", {
+      userId: session.user.id,
+      target: "/settings/organization",
+    })
     redirect("/settings/organization")
   }
 

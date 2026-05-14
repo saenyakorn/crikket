@@ -4,10 +4,13 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getProtectedAuthData } from "@/app/(protected)/_lib/get-protected-auth-data"
+import { createServerLogger } from "@/lib/server-logger"
 import { client } from "@/utils/orpc"
 
 import { OrganizationBillingCard } from "../_components/organization-billing-card"
 import { getRequestErrorMessage } from "../_lib/get-request-error-message"
+
+const logger = createServerLogger("settings-billing-page")
 
 export const metadata: Metadata = {
   title: "Billing Settings",
@@ -25,10 +28,15 @@ export default async function BillingSettingsPage() {
   const { organizations, session } = await getProtectedAuthData()
 
   if (!session) {
+    logger.warn("redirecting to /login (no session)", { target: "/login" })
     redirect("/login")
   }
 
   if (organizations.length === 0) {
+    logger.warn("redirecting to /onboarding (no organizations)", {
+      userId: session.user.id,
+      target: "/onboarding",
+    })
     redirect("/onboarding")
   }
 

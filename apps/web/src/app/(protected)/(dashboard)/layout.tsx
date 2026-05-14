@@ -14,7 +14,10 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { UnverifiedEmailBanner } from "@/components/auth/unverified-email-banner"
 import { DashboardBreadcrumbs } from "@/components/dashboard-breadcrumbs"
 import { Shell } from "@/components/shell"
+import { createServerLogger } from "@/lib/server-logger"
 import { client } from "@/utils/orpc"
+
+const logger = createServerLogger("dashboard-layout")
 
 export default async function DashboardLayout({
   children,
@@ -24,10 +27,15 @@ export default async function DashboardLayout({
   const { organizations, session } = await getProtectedAuthData()
 
   if (!session) {
+    logger.warn("redirecting to /login (no session)", { target: "/login" })
     redirect("/login")
   }
 
   if (organizations.length === 0) {
+    logger.warn("redirecting to /onboarding (no organizations)", {
+      userId: session.user.id,
+      target: "/onboarding",
+    })
     redirect("/onboarding")
   }
 
@@ -35,6 +43,13 @@ export default async function DashboardLayout({
     organizations.find(
       (organization) => organization.id === session.session.activeOrganizationId
     ) ?? organizations[0]
+
+  logger.debug("active organization resolved", {
+    userId: session.user.id,
+    sessionActiveOrganizationId: session.session.activeOrganizationId ?? null,
+    resolvedActiveOrganizationId: activeOrganization.id,
+    organizationCount: organizations.length,
+  })
   const requestHeaders = await headers()
   const authFetchOptions = {
     fetchOptions: {
@@ -54,6 +69,14 @@ export default async function DashboardLayout({
   ])
   const isDashboardLocked = billingSnapshot.plan === "free"
   const canManageBilling = activeMembership.data?.role === "owner"
+
+  logger.info("rendering dashboard", {
+    userId: session.user.id,
+    organizationId: activeOrganization.id,
+    plan: billingSnapshot.plan,
+    isDashboardLocked,
+    memberRole: activeMembership.data?.role ?? null,
+  })
 
   return (
     <SidebarProvider className="min-h-svh items-stretch">
